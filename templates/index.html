@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiMapa</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { padding: 8px 15px; background-color: #4285F4; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none;}
+        .btn-logout { background-color: #db4437; }
+        .btn-visit { background-color: #0F9D58; }
+        
+        #map { height: 500px; width: 100%; border-radius: 10px; border: 2px solid #ddd; margin-bottom: 20px; z-index: 1;}
+        
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;}
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        .marker-img { width: 100%; max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
+        .visits-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+        .visit-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        .visit-time { color: #888; font-size: 0.8em; }
+        
+        .alert-visit { background-color: #e8f0fe; color: #1967d2; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 15px; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🌎 MiMapa {% if visitor_mode %} de {{ user.email }} {% endif %}</h1>
+        
+        <div>
+            {% if visitor_mode %}
+                <a href="/" class="btn">🔙 Volver a mi mapa</a>
+            {% elif user %}
+                <span>{{ user.name }}</span>
+                <a href="/logout" class="btn btn-logout" style="margin-left: 10px;">Salir</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if visitor_mode %}
+        <div class="alert-visit">👀 Estás viendo el mapa de otro viajero (Modo Lectura)</div>
+    {% endif %}
+
+    {% if user %}
+        <div id="map"></div>
+
+        {% if is_owner %}
+            <div class="panel">
+                <h3>📍 Añadir nuevo destino</h3>
+                <form action="/add-marker" method="post" enctype="multipart/form-data" class="form-row">
+                    <div><label>Ciudad:</label><br><input type="text" name="city" required placeholder="Ej: Tokio"></div>
+                    <div><label>País:</label><br><input type="text" name="country" required placeholder="Ej: Japón"></div>
+                    <div><label>Foto:</label><br><input type="file" name="image" accept="image/*"></div>
+                    <button type="submit" class="btn">Guardar</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h3>🔍 Visitar a otro viajero</h3>
+                <form action="/visit" method="post" class="form-row">
+                    <input type="email" name="target_email" required placeholder="email@amigo.com" style="width: 250px;">
+                    <button type="submit" class="btn btn-visit">Ver Mapa</button>
+                </form>
+            </div>
+
+            {% if visits_received %}
+            <div class="panel">
+                <h3>👀 Quién te ha visitado</h3>
+                <ul class="visits-list">
+                    {% for visit in visits_received %}
+                    <li class="visit-item">
+                        <strong>{{ visit.visitor_email }}</strong>
+                        <div class="visit-time">{{ visit.timestamp }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+        {% endif %} {% else %}
+        <div style="text-align: center; margin-top: 50px;">
+            <h2>Bienvenido a tu bitácora de viajes</h2>
+            <a href="/login" class="btn" style="padding: 15px 30px; font-size: 1.2em;">Iniciar sesión con Google</a>
+        </div>
+    {% endif %}
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        {% if user %}
+            var map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            var markers = {{ user.markers | tojson }};
+            
+            markers.forEach(function(m) {
+                if(m.lat && m.lon) {
+                    // Construir el contenido del popup
+                    let popupContent = `<b>${m.city}, ${m.country}</b>`;
+                    if (m.image_url) {
+                        popupContent += `<br><img src="${m.image_url}" class="marker-img">`;
+                    }
+
+                    L.marker([m.lat, m.lon])
+                        .addTo(map)
+                        .bindPopup(popupContent);
+                }
+            });
+        {% endif %}
+    </script>
+</body>
+</html>

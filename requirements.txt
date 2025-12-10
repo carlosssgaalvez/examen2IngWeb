@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+jinja2
+pymongo
+authlib
+itsdangerous
+httpx
+python-dotenv
+python-multipart
+cloudinary
