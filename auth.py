@@ -24,8 +24,15 @@ oauth.register(
 # 1. Ruta de Login: Manda al usuario a Google
 @router.get("/login")
 async def login(request: Request):
-    # Construye la URL de callback (debe coincidir con la de Google Cloud Console)
+    # Generamos la URL absoluta para el callback
     redirect_uri = request.url_for('auth')
+    
+    # --- PARCHE HTTPS PARA VERCEL ---
+    # Si la URL generada es http pero estamos en vercel, la forzamos a https
+    if "vercel.app" in str(redirect_uri):
+        redirect_uri = str(redirect_uri).replace("http://", "https://")
+    # --------------------------------
+    
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 # 2. Ruta de Auth (Callback): Google devuelve al usuario aquí
